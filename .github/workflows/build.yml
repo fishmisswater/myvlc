@@ -1,0 +1,45 @@
+name: Build VLC on Windows
+
+on:
+  push:
+    branches:
+      - main  # 或者你想要构建的其他分支
+  pull_request:
+    branches:
+      - main  # 当提交 PR 时触发构建
+
+jobs:
+  build:
+    runs-on: windows-latest  # 选择使用的操作系统
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2  # 检出仓库内容
+
+    - name: Set up dependencies
+      run: |
+        # 安装 Visual Studio Build Tools
+        choco install visualstudio2019buildtools --version=16.11.9 --package-parameters "--add-to-program-path"
+        choco install python3
+        choco install nasm  # 用于汇编语言支持（根据需要安装其他依赖）
+
+    - name: Set up VLC build environment
+      run: |
+        # 下载和配置 VLC 构建依赖
+        git clone https://github.com/videolan/vlc.git
+        cd vlc
+        git submodule update --init --recursive
+        mkdir build
+
+    - name: Build VLC
+      run: |
+        # 执行构建过程。VLC 使用 `mingw-w64` 编译器在 Windows 上构建
+        cd vlc/build
+        cmake -G "MinGW Makefiles" ..
+        mingw32-make  # 使用 mingw 工具链构建
+
+    - name: Upload EXE as artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: vlc-windows-exe
+        path: vlc/build/src/.libs/*.exe  # 提供构建输出的路径
